@@ -1,36 +1,44 @@
+import logging
 import pytest
 from selenium import webdriver
-from selenium.webdriver.common.by import By
+from pages.login_page import LoginPage
+from pages.inventory_page import InventoryPage
+from pages.cart_page import CartPage
 
-def test_inventory():
+def test_cart(capturar_fallo):
     driver = webdriver.Firefox()
     
     try:
-        #login
+        logging.info("Inicio de la prueba del carrito")
+        driver.implicitly_wait(10)
+        
+        # Iniciar sesión
         driver.get("https://www.saucedemo.com/")
         
-        usuario = driver.find_element(By.ID, "user-name")
-        password = driver.find_element(By.ID, "password")
-        usuario.send_keys("standard_user")
-        password.send_keys("secret_sauce")
-        driver.find_element(By.CSS_SELECTOR, 'input[type="submit"]').click()
+        login = LoginPage(driver)
+        logging.info("Iniciando sesión para agregar un producto al carrito")
+        login.escribir_usuario("standard_user")
+        login.escribir_password("secret_sauce")
+        login.presionar_login()
 
-        # 1) Agregar el primer producto
-        # botón Add to cart
-        first_item = driver.find_element(By.CSS_SELECTOR, ".inventory_item")
-        first_item_name = first_item.find_element(By.CSS_SELECTOR, ".inventory_item_name").text
-        first_item.find_element(By.TAG_NAME, "button").click()
+        # Agregar el primer producto al carrito
+        inventario = InventoryPage(driver)
+        nombre_producto = inventario.obtener_nombre_primer_producto()
+        inventario.agregar_primer_producto()
+        logging.info("Producto agregado al carrito: %s", nombre_producto)
 
-        # 2) Verificar badge del carrito = 1
-        badge = driver.find_element(By.CSS_SELECTOR, ".shopping_cart_badge").text
-        assert badge == "1", f"El contador del carrito es {badge} (se esperaba 1)"
-
-        # 3) Ir al carrito y confirmar producto
-        driver.find_element(By.CLASS_NAME, "shopping_cart_link").click()
-        cart_name = driver.find_element(By.CSS_SELECTOR, ".cart_item .inventory_item_name").text
-        assert cart_name == first_item_name
-        print("Test OK")
+        # Entrar al carrito y verificar el producto
+        inventario.ir_al_carrito()
+        logging.info("Consultando el producto dentro del carrito")
+        carrito = CartPage(driver)
+        nombre_producto_carrito = carrito.obtener_nombre_producto()
+        assert nombre_producto_carrito == nombre_producto
+        logging.info("El producto del carrito coincide con el producto agregado")
         
+    except Exception:
+        logging.exception("Falló la prueba del carrito")
+        capturar_fallo(driver)
+        raise
     finally:
         driver.quit()
 
